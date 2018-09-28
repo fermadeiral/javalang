@@ -281,7 +281,7 @@ class JavaTokenizer(object):
                 return
 
 
-            self.start_of_line = i
+            # self.start_of_line = i
             self.j = i
         # bloc comments comments
         else:
@@ -293,8 +293,8 @@ class JavaTokenizer(object):
 
             i += 2
 
-            self.start_of_line = i
-            self.current_line += self.data.count('\n', self.i, i)
+            # self.start_of_line = i
+            # self.current_line += self.data.count('\n', self.i, i)
             self.j = i
 
     def try_javadoc_comment(self):
@@ -549,17 +549,16 @@ class JavaTokenizer(object):
                 continue
 
             elif startswith in ("//", "/*"):
-                if startswith == "/*" and self.try_javadoc_comment():
-                    self.javadoc = self.data[self.i:self.j]
-                    self.i = self.j
-                    continue
+                if self.parse_comments:
+                    token_type = Comment
+                    self.parse_comment()
                 else:
-                    if self.parse_comments:
-                        token_type = Comment
-                        self.parse_comment()
+                    if startswith == "/*" and self.try_javadoc_comment():
+                        self.javadoc = self.data[self.i:self.j]
+                        self.i = self.j
                     else:
                         self.read_comment()
-                        continue
+                    continue
 
 
             elif startswith == '..' and self.try_operator():
@@ -599,6 +598,8 @@ class JavaTokenizer(object):
 
             position = (self.current_line, self.i - self.start_of_line)
             token = token_type(self.data[self.i:self.j], position, self.javadoc)
+            self.current_line += self.data.count('\n', self.i, self.j)
+
             yield token
 
             if self.javadoc:
