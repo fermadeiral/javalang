@@ -139,6 +139,9 @@ class Annotation(JavaToken):
 class Identifier(JavaToken):
     pass
 
+class Comment(JavaToken):
+    pass
+
 
 class JavaTokenizer(object):
 
@@ -146,9 +149,10 @@ class JavaTokenizer(object):
 
     IDENT_PART_CATEGORIES = set(['Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Mc', 'Mn', 'Nd', 'Nl', 'Pc', 'Sc'])
 
-    def __init__(self, data, ignore_errors=False):
+    def __init__(self, data, ignore_errors=False, parse_comments=False):
         self.data = data
         self.ignore_errors = ignore_errors
+        self.parse_comments = parse_comments
         self.errors = []
 
         self.current_line = 1
@@ -239,9 +243,11 @@ class JavaTokenizer(object):
             if self.data[self.i:self.i + l] in self.operators[l - 1]:
                 self.j = self.i + l
                 return True
+
         return False
 
     def read_comment(self):
+        # inline comments
         if self.data[self.i + 1] == '/':
             i = self.data.find('\n', self.i + 2)
 
@@ -249,12 +255,9 @@ class JavaTokenizer(object):
                 self.i = self.length
                 return
 
-            i += 1
-
-            self.start_of_line = i - 1
-            self.current_line += 1
+            self.start_of_line = i
             self.i = i
-
+        # bloc comments comments
         else:
             i = self.data.find('*/', self.i + 2)
 
@@ -267,6 +270,32 @@ class JavaTokenizer(object):
             self.start_of_line = i
             self.current_line += self.data.count('\n', self.i, i)
             self.i = i
+
+    def parse_comment(self):
+        # inline comments
+        if self.data[self.i + 1] == '/':
+            i = self.data.find('\n', self.i + 2)
+
+            if i == -1:
+                self.i = self.length
+                return
+
+
+            self.start_of_line = i
+            self.j = i
+        # bloc comments comments
+        else:
+            i = self.data.find('*/', self.i + 2)
+
+            if i == -1:
+                self.i = self.length
+                return
+
+            i += 2
+
+            self.start_of_line = i
+            self.current_line += self.data.count('\n', self.i, i)
+            self.j = i
 
     def try_javadoc_comment(self):
         if self.i + 2 >= self.length or self.data[self.i + 2] != '*':
@@ -523,9 +552,15 @@ class JavaTokenizer(object):
                 if startswith == "/*" and self.try_javadoc_comment():
                     self.javadoc = self.data[self.i:self.j]
                     self.i = self.j
+                    continue
                 else:
-                    self.read_comment()
-                continue
+                    if self.parse_comments:
+                        token_type = Comment
+                        self.parse_comment()
+                    else:
+                        self.read_comment()
+                        continue
+
 
             elif startswith == '..' and self.try_operator():
                 # Ensure we don't mistake a '...' operator as a sequence of
@@ -589,8 +624,8 @@ class JavaTokenizer(object):
         if not self.ignore_errors:
             raise error
 
-def tokenize(code, ignore_errors=False):
-    tokenizer = JavaTokenizer(code, ignore_errors)
+def tokenize(code, ignore_errors=False, parse_comments=False):
+    tokenizer = JavaTokenizer(code, ignore_errors, parse_comments)
     return tokenizer.tokenize()
 
 def reformat_tokens(tokens):

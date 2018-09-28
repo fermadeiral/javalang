@@ -120,5 +120,24 @@ public int function() {
         # Then
         self.assertEqual(len(tokens), 8)
 
+    def test_tokenize_comments(self):
+        # Given
+        code = """
+public int function() {
+    int a = 10;
+    // some comment
+    int b = 10;
+    /* Another
+    multiple lines
+    comment */
+}
+        """
+
+        # When
+        tokens = list(tokenizer.tokenize(code, parse_comments=True))
+
+        # Then
+        self.assertEqual(len(tokens), 19)
+
 if __name__=="__main__":
     unittest.main()
