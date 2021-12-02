@@ -277,7 +277,7 @@ class JavaTokenizer(object):
             i = self.data.find('\n', self.i + 2)
 
             if i == -1:
-                self.i = self.length
+                self.j = self.length
                 return
 
 
@@ -288,7 +288,7 @@ class JavaTokenizer(object):
             i = self.data.find('*/', self.i + 2)
 
             if i == -1:
-                self.i = self.length
+                self.j = self.length
                 return
 
             i += 2
